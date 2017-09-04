@@ -27,6 +27,12 @@ end_main:
 
 #Takes two int coordinates, returns the amount of neighbours in $a0
 neighbours: 
+	li $t0, 0
+	outerNeighbours:
+		innerNeighbours:
+		innerNeighboursEnd:
+	outerNeighboursEnd:
+
 	jr $ra
 
 # Copies the new board over to the old, and prints it at the same time
