@@ -9,13 +9,27 @@
 	.data
 	.align 4
 main_ret_save: .space 4
+num_user_iterations: .space 4
 hash: .asciiz "#"
 dot: .asciiz "."
+iternum: .asciiz "# Iterations: "
+afterIter1: .asciiz "=== After iteration "
+afterIter2: .asciiz " ===\n"
 newline: .asciiz "\n"
 	.text
 	.globl main
 main:
-	sw $ra, main_ret_save
+	sw $ra, main_ret_save # DO NOT COMMENT THIS OUT
+
+	# Get the number of iterations
+	li $v0, 4
+	la $a0 iternum
+	syscall
+	# Read the user input into $v0
+	li $v0 5
+	syscall
+
+	sw $v0 num_user_iterations # Save the user iterations into a constant
 
 	jal copyBackAndShow
  #Your main program code goes here
@@ -26,7 +40,7 @@ end_main:
 
 # The other functions go here
 
-#Takes two int coordinates, returns the amount of neighbours in $a0
+#Takes two int coordinates, returns the amount of neighbours in $v0
 neighbours: 
 	# row is in $a0, column in $a1
 	# Save our result in $v0, load our constant N
@@ -62,10 +76,10 @@ neighbours:
 			
 			# Now add the board inted $t3 into $t4
 			lb $t4, board($t3) # 1 or 0
-			$addi $v0, $v0, $t4
+			add $v0, $v0, $t4
 		caseFail: # If a test for safety fails, jumps here
 			#incement and jump 
-			$addi $t2, $t2, 1
+			addi $t2, $t2, 1
 			j innerNeighbours
 		# Increment outer counter and jump to start of loop
 		innerNeighboursEnd:
