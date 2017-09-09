@@ -10,6 +10,7 @@
 	.align 4
 main_ret_save: .space 4
 num_user_iterations: .space 4
+Nsquare: .space 4
 hash: .asciiz "#"
 dot: .asciiz "."
 iternum: .asciiz "# Iterations: "
@@ -31,7 +32,89 @@ main:
 
 	sw $v0 num_user_iterations # Save the user iterations into a constant
 
-	jal copyBackAndShow
+	# Calculate N^2 - 1
+	lw $t0 N
+	mul $t0, $t0, $t0
+	addi $t0, $t0, -1
+	sw $t0 Nsquare # save it back
+
+	# Set our iterations counter to 1
+	li $s0 1
+	
+	# Now we begin our cycling loop
+	iterations_loop:
+		lw $t0 num_user_iterations # Load temporarily the number of iterations into $t0
+		bgt $s0, $t0, end_iterations_loop # Jump to the loop end if num_iters > specified_iters
+
+		# Loop: loop from (0) to (N^2 -1), 
+		# $s1 is our counter
+		li $s1 0
+		logic_loop:
+			lw $t0 Nsquare # get our exit status
+			bgt $s1 $t0 logic_end #Exit if counter > N^2 - 1
+
+			# Get neighbours
+			move $a0 $s1 #a0 has current index
+			jal neighbours
+			# Now $v0 has the amount of neighbours, copy to $s3
+			move $s3 $v0
+			# If current cell is alive, jump to alive logic:
+			lb $s2 board($s1)
+			bgtz $s2 if_cell_alive # If cell is > 0 (i.e. 1), jump to alive secion
+				#Else, cell is dead
+				li $t0 3
+				# If Neighbours is 3, keep cell alive
+				bne $s3 $t0 cell_stays_dead
+					# Cell becomes alive as neighbours = 3
+					li $t0 1
+					sb $t0 newBoard($s1)
+					j end_incr_j #end loop iteration
+				cell_stays_dead: #Else, cell stays dead
+					sb $zero newBoard($s1) # Write 0 to newBoard
+					j end_incr_j # end loop iteration
+			if_cell_alive:
+				# Check 3 possibilities
+				li $t0 2
+				li $t1 3
+				blt $s3 $t0 cell_dies # If number of neighbours is less than 2
+				bgt $s3 $t1 cell_dies # If number of neighbours is greater than 3 
+					# At this stage, the cell lives, as neighbours is 2 or 3
+					li $t0 1
+					sb $t0 newBoard($s1)
+					j end_incr_j #end loop iteration
+					
+				cell_dies:
+					sb $zero newBoard($s1) # Write 0 to newBoard
+					j end_incr_j # end loop iteration
+				
+				
+		end_incr_j: #end inner loop, increment and jump
+			addi $s1 1
+			j logic_loop
+
+		logic_end:
+		# Print iteration number
+		li $v0 4
+		la $a0 afterIter1
+		syscall # prints "=== After iteration "
+		li $v0 1
+		move $a0 $s0
+		syscall # print the iteration number
+		li $v0 4
+		la $a0 afterIter2
+		syscall # prints " ===\n"
+		
+		# Print the board and copy into new board
+		jal copyBackAndShow 
+
+		# Increment and save back
+		addi $s0 1
+
+		# Next iteration
+		j iterations_loop
+		
+	end_iterations_loop:
+
  #Your main program code goes here
 
 end_main:
@@ -42,15 +125,14 @@ end_main:
 
 #Takes two int coordinates, returns the amount of neighbours in $v0
 neighbours: 
-	# row is in $a0, column in $a1
+	# index is in $a0
 	# Save our result in $v0, load our constant N
 	li $v0, 0
 	lw $t9, N
 	# Load N^2 into a constant
 	mul $t7, $t9, $t9
 	# Load the 1D offset of board[x][y] into $t0 
-	mul $t0, $a0, $t9
-	add $t0, $t0, $a1
+	move $t0 $a0
 	# Get our two loop counters
 	li $t1, -1
 	li $t2, -1
@@ -74,7 +156,7 @@ neighbours:
 			bge $t3, $t7, caseFail # If index >= N^2, 
 			beq $t3 $t0 caseFail # If index is current index (we don't count ourself)
 			
-			# Now add the board inted $t3 into $t4
+			# Now add the board index $t3 into $t4
 			lb $t4, board($t3) # 1 or 0
 			add $v0, $v0, $t4
 		caseFail: # If a test for safety fails, jumps here
@@ -109,8 +191,9 @@ copyBackAndShow:
 			mul $t3, $t1, $t0
 			addu $t3, $t3, $t2
 			# The following is commented out. Comment it again when most of MAIN is done:
-			# Copy newboard to board TODO
-			#lb board($t3), newboard($t3)
+			# Copy newBoard to board
+			lb $t5, board($t3)
+			sb $t5 newBoard($t3)
 		
 			lb $t4, board($t3)
 			# if the byte in slot $t3 is a 0, jump to a dot print
