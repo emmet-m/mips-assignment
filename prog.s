@@ -192,8 +192,8 @@ copyBackAndShow:
 			addu $t3, $t3, $t2
 			# The following is commented out. Comment it again when most of MAIN is done:
 			# Copy newBoard to board
-			lb $t5, board($t3)
-			sb $t5 newBoard($t3)
+			lb $t5, newBoard($t3)
+			sb $t5 board($t3)
 		
 			lb $t4, board($t3)
 			# if the byte in slot $t3 is a 0, jump to a dot print
