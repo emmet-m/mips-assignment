@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "board1.h"
+#include "board2.h"
 
 int neighbours(int, int);
 void copyBackAndShow();

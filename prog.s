@@ -56,6 +56,7 @@ main:
 			# Get neighbours
 			move $a0 $s1 #a0 has current index
 			jal neighbours
+			nop
 			# Now $v0 has the amount of neighbours, copy to $s3
 			move $s3 $v0
 			# If current cell is alive, jump to alive logic:
@@ -106,10 +107,9 @@ main:
 		
 		# Print the board and copy into new board
 		jal copyBackAndShow 
-
+		nop
 		# Increment and save back
 		addi $s0 1
-
 		# Next iteration
 		j iterations_loop
 		
@@ -129,10 +129,13 @@ neighbours:
 	# Save our result in $v0, load our constant N
 	li $v0, 0
 	lw $t9, N
-	# Load N^2 into a constant
-	mul $t7, $t9, $t9
-	# Load the 1D offset of board[x][y] into $t0 
-	move $t0 $a0
+
+	# We need our cartesian coordinates: $t0 = $t5*N + $t6
+	# $t5 = integerDivision $t0/N
+	div $t5, $a0, $t9
+	# $t6 = mod  $t0 % N
+	rem $t6, $a0, $t9
+
 	# Get our two loop counters
 	li $t1, -1
 	li $t2, -1
@@ -146,18 +149,25 @@ neighbours:
 		innerNeighbours:
 			# If counter greater than 1, jump to the end
 			bgt $t2, $t8, innerNeighboursEnd
-			# Recalculate offset into $t3
-			mul $t3, $t1, $t9 # +(-N || 0 || N)
-			add $t3, $t2, $t3 # +(-1 || 0 || 1)
-			add $t3, $t3, $t0 # (add offset to centre)
 
-			# Checks for a valid address
-			bltz $t3, caseFail # If index less than 0
-			bge $t3, $t7, caseFail # If index >= N^2, 
-			beq $t3 $t0 caseFail # If index is current index (we don't count ourself)
+ 			# See if we've gone too far above the board or below the board
+			add  $t7, $t1, $t5
+			bltz $t7, caseFail # If less than 0, above board
+			bge  $t7, $t9 caseFail # If greater than N-1, below board
+
+			# See if we've gone too far left and right
+			add  $t3, $t2, $t6 
+			bltz $t3, caseFail # If less than 0, above board
+			bge  $t3, $t9 caseFail # If greater than N-1, below board
+
+			# Passed edge tests... Now onto calculating offset	
+			# Recalculate offset into $t7
+			mul $t7, $t7, $t9 # +(-N || 0 || N)
+			add $t7, $t7, $t3
+			beq  $t7, $a0 caseFail # If index is current index (we don't count ourself)
 			
 			# Now add the board index $t3 into $t4
-			lb $t4, board($t3) # 1 or 0
+			lb  $t4, board($t7) # 1 or 0
 			add $v0, $v0, $t4
 		caseFail: # If a test for safety fails, jumps here
 			#incement and jump 
@@ -193,7 +203,7 @@ copyBackAndShow:
 			# The following is commented out. Comment it again when most of MAIN is done:
 			# Copy newBoard to board
 			lb $t5, newBoard($t3)
-			sb $t5 board($t3)
+			sb $t5, board($t3)
 		
 			lb $t4, board($t3)
 			# if the byte in slot $t3 is a 0, jump to a dot print
